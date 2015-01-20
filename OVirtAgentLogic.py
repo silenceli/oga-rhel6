@@ -284,8 +284,21 @@ class AgentLogicBase:
 		password = args['admin_password']
 	    except:
 		logging.error("host called set_admin_password, but pass empty password, password not set")
-		return
-	    self.commandHandler.set_admin_password(password)	
+		return -1
+	    ret = self.commandHandler.set_admin_password(password)	
+	    if ret != 0:
+		return -1
+	    return 0
+	elif command == 'rename':
+	    try:
+		hostname = args['hostname']
+	    except:
+		logging.error("host called hostname, but pass empty hostname, hostname not set")
+		return -1
+	    ret = self.commandHandler.rename(hostname)	
+	    if ret != 0:
+		return -1
+	    return 0
         elif command == 'api-version':
             self._onApiVersion(args)
         elif command == 'shutdown':
