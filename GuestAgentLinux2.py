@@ -179,7 +179,7 @@ class CommandHandlerLinux:
        	subprocess.call(cmd)
     def set_admin_password(self, password):
      	cmd = ['/usr/share/ovirt-guest-agent/set_admin_password', password]
-	logging.debug("Executing set_admin_password command: %s", cmd)
+	logging.info("Executing set_admin_password command: %s", cmd)
 	print cmd
        	ret = subprocess.call(cmd)
 	if ret != 0:
@@ -188,7 +188,7 @@ class CommandHandlerLinux:
 	return 0
     def rename(self, hostname):
      	cmd = ['/usr/share/ovirt-guest-agent/rename', hostname]
-	logging.debug("Executing rename command: %s", cmd)
+	logging.info("Executing rename command: %s", cmd)
 	print cmd
        	ret = subprocess.call(cmd)
 	if ret != 0:

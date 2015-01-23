@@ -55,7 +55,9 @@ _MESSAGE_MIN_API_VERSION = {
     'session-logon': 0,
     'session-shutdown': 0,
     'session-startup': 0,
-    'session-unlock': 0}
+    'session-unlock': 0,
+    'set_admin_password_result': 0,
+    'rename_result': 0}
 
 
 # Return a safe (password masked) repr of the credentials block.
@@ -169,7 +171,8 @@ class AgentLogicBase:
         self.numCPUsCheckRate = config.getint("general", "report_num_cpu_rate")
         self.activeUser = ""
         self.vio = VirtIoChannel(config.get("virtio", "device"))
-        self.dr = None
+        self.commandio = VirtIoChannel(config.get("commandio", "device"))
+	self.dr = None
         self.commandHandler = None
 
     def _send(self, name, arguments=None):
@@ -181,6 +184,18 @@ class AgentLogicBase:
         else:
             logging.debug("Message %s not supported by api version %d.",
                           name, self.dr.getAPIVersion())
+    
+    def _send_command(self, name, arguments=None):
+        version = _MESSAGE_MIN_API_VERSION.get(name, None)
+        if version is None:
+            logging.error('Undocumented message "%s"', name)
+        elif version <= self.dr.getAPIVersion():
+            self.commandio.write(name, arguments or {})
+        else:
+            logging.debug("Message %s not supported by api version %d.",
+                          name, self.dr.getAPIVersion())
+
+
 
     def run(self):
         logging.debug("AgentLogicBase:: run() entered")
@@ -255,7 +270,7 @@ class AgentLogicBase:
             try:
                 logging.debug("AgentLogicBase::doListen() - "
                               "in loop before vio.read")
-                cmd, args = self.vio.read()
+                cmd, args = self.commandio.read()
                 if cmd:
                     self.parseCommand(cmd, args)
             except:
@@ -272,33 +287,26 @@ class AgentLogicBase:
             self.commandHandler.lock_screen()
         elif command == 'log-off':
             self.commandHandler.logoff()
-	elif command == 'mkdir':
-            try:
-                dir = args['dir']
-            except:
-                dir = 'lihao'
-	    logging.error("mkdir is comming dir")
-            self.commandHandler.mkdir(dir)
 	elif command == 'set_admin_password':
 	    try:
 		password = args['admin_password']
 	    except:
 		logging.error("host called set_admin_password, but pass empty password, password not set")
-		return -1
+		self._send_command('set_admin_password_result',{'ret': 1000})
+		return
 	    ret = self.commandHandler.set_admin_password(password)	
-	    if ret != 0:
-		return -1
-	    return 0
+	    logging.info("send set_admin_password result %d to host", ret)
+	    self._send_command('set_admin_password_result',{'ret': ret})
 	elif command == 'rename':
 	    try:
 		hostname = args['hostname']
 	    except:
 		logging.error("host called hostname, but pass empty hostname, hostname not set")
-		return -1
+		self._send('rename_result',{'ret': 1000})
+		return
 	    ret = self.commandHandler.rename(hostname)	
-	    if ret != 0:
-		return -1
-	    return 0
+	    logging.info("send rename result %d to host", ret)
+	    self._send_command('rename_result',{'ret': ret})
         elif command == 'api-version':
             self._onApiVersion(args)
         elif command == 'shutdown':
